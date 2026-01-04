@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <modification>
-    <name>Interactive Spare Parts Scheme V1.2</name>
-    <code>parts_scheme_pro_v1.2_final</code>
-    <version>1.2</version>
+    <name>Interactive Spare Parts Scheme V1.3</name>
+    <code>parts_scheme_pro_v1.3_final</code>
+    <version>1.3</version>
     <author>Mhack and AI</author>
     <link>https://opencartforum.com/profile/980825-mhack/</link>
     <file path="admin/controller/catalog/product.php">
@@ -185,6 +185,51 @@
                     } else {
                         $point['product_id'] = $this->addProduct($custom_data);
                     }
+				   // Generate or update SEO URL
+                    $name = $point['name'];
+                    $translit_map = [
+                        'а' => 'a', 'б' => 'b', 'в' => 'v', 'г' => 'g', 'д' => 'd',
+                        'е' => 'e', 'ё' => 'yo', 'ж' => 'zh', 'з' => 'z', 'и' => 'i',
+                        'й' => 'y', 'к' => 'k', 'л' => 'l', 'м' => 'm', 'н' => 'n',
+                        'о' => 'o', 'п' => 'p', 'р' => 'r', 'с' => 's', 'т' => 't',
+                        'у' => 'u', 'ф' => 'f', 'х' => 'h', 'ц' => 'c', 'ч' => 'ch',
+                        'ш' => 'sh', 'щ' => 'sch', 'ъ' => '', 'ы' => 'y', 'ь' => '',
+                        'э' => 'e', 'ю' => 'yu', 'я' => 'ya',
+                        'А' => 'A', 'Б' => 'B', 'В' => 'V', 'Г' => 'G', 'Д' => 'D',
+                        'Е' => 'E', 'Ё' => 'Yo', 'Ж' => 'Zh', 'З' => 'Z', 'И' => 'I',
+                        'Й' => 'Y', 'К' => 'K', 'Л' => 'L', 'М' => 'M', 'Н' => 'N',
+                        'О' => 'O', 'П' => 'P', 'Р' => 'R', 'С' => 'S', 'Т' => 'T',
+                        'У' => 'U', 'Ф' => 'F', 'Х' => 'H', 'Ц' => 'C', 'Ч' => 'Ch',
+                        'Ш' => 'Sh', 'Щ' => 'Sch', 'Ъ' => '', 'Ы' => 'Y', 'Ь' => '',
+                        'Э' => 'E', 'Ю' => 'Yu', 'Я' => 'Ya'
+                    ];
+                    $name_trans = '';
+                    $name_chars = preg_split('//u', $name, -1, PREG_SPLIT_NO_EMPTY);
+                    foreach ($name_chars as $char) {
+                        $name_trans .= isset($translit_map[$char]) ? $translit_map[$char] : $char;
+                    }
+                    $name_slug = preg_replace('/[^a-zA-Z0-9]+/', '-', strtolower($name_trans));
+                    $name_slug = trim($name_slug, '-');
+                    $keyword_base = $name_slug ? $name_slug . '-' . $point['number'] : 'custom-part-' . $point['number'];
+                    $this->db->query("DELETE FROM " . DB_PREFIX . "seo_url WHERE query = 'product_id=" . (int)$point['product_id'] . "'");
+                    $keyword = $keyword_base;
+                    $i = 1;
+                    while (true) {
+                        $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "seo_url WHERE keyword = '" . $this->db->escape($keyword) . "'");
+                        if (!$query->num_rows) {
+                            break;
+                        }
+                        $keyword = $keyword_base . '-' . $i;
+                        $i++;
+                    }
+                    $stores = $custom_data['product_store'];
+                    foreach ($stores as $store_id) {
+                        foreach ($languages as $language) {
+                            $language_id = $language['language_id'];
+                            $this->db->query("INSERT INTO " . DB_PREFIX . "seo_url SET store_id = '" . (int)$store_id . "', language_id = '" . (int)$language_id . "', query = 'product_id=" . (int)$point['product_id'] . "', keyword = '" . $this->db->escape($keyword) . "'");
+                        }
+                    }
+					
                     $point['type'] = 'product';
                     unset($point['name'], $point['price'], $point['quantity'], $point['image']);
                 }
@@ -280,7 +325,7 @@
                     <div class="col-sm-5">
                         <div style="max-height: 600px; overflow-y: auto;">
                             <table id="scheme-table" class="table table-bordered">
-                                <thead><tr><th width="50">№</th><th width="120">Варіант</th><th>Деталі</th><th width="100">Форма</th><th style="display:none;"></th><th width="50">Дія</th></tr></thead>
+                                <thead><tr><th width="70">№</th><th width="120">Варіант</th><th>Деталі</th><th width="100">Форма</th><th style="display:none;"></th><th width="50">Дія</th></tr></thead>
                                 <tbody>
                                     {% set point_row = 0 %}
                                     {% for point in scheme_points %}
@@ -550,7 +595,7 @@
     </file>
     <file path="catalog/view/theme/*/template/product/product.twig">
         <operation>
-            <search><![CDATA[{{ description }}]]></search>
+            <search><![CDATA[<ul class="nav nav-tabs">]]></search>
             <add position="before"><![CDATA[
 {% if scheme_image %}
 <div id="product-scheme-section" style="margin-top:30px; clear:both;">
@@ -726,4 +771,3 @@ $(document).ready(function() {
         </operation>
     </file>
 </modification>
-
